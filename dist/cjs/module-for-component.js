@@ -4,7 +4,7 @@ var moduleFor = require("./module-for")["default"] || require("./module-for");
 var Ember = require("ember")["default"] || require("ember");
 
 exports["default"] = function moduleForComponent(name, description, callbacks) {
-  var resolver = testResolver.get();
+  var resolver = testResolver.getResolver();
 
   moduleFor('component:' + name, description, callbacks, function(container, context, defaultSubject) {
     var layoutName = 'template:components/' + name;

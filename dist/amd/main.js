@@ -13,7 +13,7 @@ define(
     Ember.testing = true;
 
     function setResolver(resolver) {
-      testResolver.set(resolver);
+      testResolver.setResolver(resolver);
     }
 
     function globalize() {

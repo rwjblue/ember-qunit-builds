@@ -10,7 +10,7 @@ var testResolver = require("./test-resolver")["default"] || require("./test-reso
 Ember.testing = true;
 
 function setResolver(resolver) {
-  testResolver.set(resolver);
+  testResolver.setResolver(resolver);
 }
 
 function globalize() {
