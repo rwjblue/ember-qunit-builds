@@ -1,16 +1,33 @@
 !function(e){if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.emq=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 "use strict";
-var testResolver = _dereq_("./test-resolver")["default"] || _dereq_("./test-resolver");
+var getResolver = _dereq_("./test-resolver").getResolver;
 var Ember = window.Ember["default"] || window.Ember;
 
 exports["default"] = function isolatedContainer(fullNames) {
-  var resolver = testResolver.get();
+  var resolver = getResolver();
   var container = new Ember.Container();
+  var normalize = function(fullName) {
+    return resolver.normalize(fullName);
+  };
+  //normalizeFullName only exists since Ember 1.9
+  if (Ember.typeOf(container.normalizeFullName) === 'function') {
+    container.normalizeFullName = normalize;
+  } else {
+    container.normalize = normalize;
+  }
   container.optionsForType('component', { singleton: false });
   container.optionsForType('view', { singleton: false });
   container.optionsForType('template', { instantiate: false });
   container.optionsForType('helper', { instantiate: false });
   container.register('component-lookup:main', Ember.ComponentLookup);
+  container.register('controller:basic', Ember.Controller, { instantiate: false });
+  container.register('controller:object', Ember.ObjectController, { instantiate: false });
+  container.register('controller:array', Ember.ArrayController, { instantiate: false });
+  container.register('view:default', Ember._MetamorphView);
+  container.register('view:toplevel', Ember.View.extend());
+  container.register('view:select', Ember.Select);
+  container.register('route:basic', Ember.Route, { instantiate: false });
+
   for (var i = fullNames.length; i > 0; i--) {
     var fullName = fullNames[i - 1];
     var normalizedFullName = resolver.normalize(fullName);
@@ -31,7 +48,7 @@ var testResolver = _dereq_("./test-resolver")["default"] || _dereq_("./test-reso
 Ember.testing = true;
 
 function setResolver(resolver) {
-  testResolver.set(resolver);
+  testResolver.setResolver(resolver);
 }
 
 function globalize() {
@@ -55,7 +72,7 @@ var moduleFor = _dereq_("./module-for")["default"] || _dereq_("./module-for");
 var Ember = window.Ember["default"] || window.Ember;
 
 exports["default"] = function moduleForComponent(name, description, callbacks) {
-  var resolver = testResolver.get();
+  var resolver = testResolver.getResolver();
 
   moduleFor('component:' + name, description, callbacks, function(container, context, defaultSubject) {
     var layoutName = 'template:components/' + name;
@@ -178,14 +195,14 @@ exports["default"] = function moduleFor(fullName, description, callbacks, delega
       
       context = testContext.get();
 
-      if (delegate) {
-        delegate(container, context, defaultSubject);
-      }
-      
       if (Ember.$('#ember-testing').length === 0) {
         Ember.$('<div id="ember-testing"/>').appendTo(document.body);
       }
       
+      if (delegate) {
+        delegate(container, context, defaultSubject);
+      }
+
       buildContextVariables(context);
       callbacks.setup.call(context, container);
     },
@@ -248,16 +265,16 @@ exports.get = get;
 "use strict";
 var __resolver__;
 
-function set(resolver) {
+function setResolver(resolver) {
   __resolver__ = resolver;
 }
 
-exports.set = set;function get() {
-  if (__resolver__ == null) throw new Error('you must set a resolver with `testResolver.set(resolver)`');
+exports.setResolver = setResolver;function getResolver() {
+  if (__resolver__ == null) throw new Error('you must set a resolver with `testResolver.setResolver(resolver)`');
   return __resolver__;
 }
 
-exports.get = get;
+exports.getResolver = getResolver;
 },{}],8:[function(_dereq_,module,exports){
 "use strict";
 var Ember = window.Ember["default"] || window.Ember;

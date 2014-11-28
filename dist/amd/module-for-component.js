@@ -7,7 +7,7 @@ define(
     var Ember = __dependency3__["default"] || __dependency3__;
 
     __exports__["default"] = function moduleForComponent(name, description, callbacks) {
-      var resolver = testResolver.get();
+      var resolver = testResolver.getResolver();
 
       moduleFor('component:' + name, description, callbacks, function(container, context, defaultSubject) {
         var layoutName = 'template:components/' + name;
