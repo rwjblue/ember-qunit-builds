@@ -115,14 +115,16 @@ define('ember-qunit', ['exports', 'ember-qunit/module-for', 'ember-qunit/module-
 
   'use strict';
 
-  Object.defineProperty(exports, 'moduleFor', { enumerable: true, get: function () { return moduleFor['default']; }});
-  Object.defineProperty(exports, 'moduleForComponent', { enumerable: true, get: function () { return moduleForComponent['default']; }});
-  Object.defineProperty(exports, 'moduleForModel', { enumerable: true, get: function () { return moduleForModel['default']; }});
-  Object.defineProperty(exports, 'test', { enumerable: true, get: function () { return test['default']; }});
-  Object.defineProperty(exports, 'setResolver', { enumerable: true, get: function () { return ember_test_helpers.setResolver; }});
+
+
+  exports.moduleFor = moduleFor['default'];
+  exports.moduleForComponent = moduleForComponent['default'];
+  exports.moduleForModel = moduleForModel['default'];
+  exports.test = test['default'];
+  exports.setResolver = ember_test_helpers.setResolver;
 
 });
-define('ember-qunit/module-for-component', ['exports', './qunit-module', 'ember-test-helpers'], function (exports, qunit_module, ember_test_helpers) {
+define('ember-qunit/module-for-component', ['exports', 'ember-qunit/qunit-module', 'ember-test-helpers'], function (exports, qunit_module, ember_test_helpers) {
 
   'use strict';
 
@@ -132,7 +134,7 @@ define('ember-qunit/module-for-component', ['exports', './qunit-module', 'ember-
   exports['default'] = moduleForComponent;
 
 });
-define('ember-qunit/module-for-model', ['exports', './qunit-module', 'ember-test-helpers'], function (exports, qunit_module, ember_test_helpers) {
+define('ember-qunit/module-for-model', ['exports', 'ember-qunit/qunit-module', 'ember-test-helpers'], function (exports, qunit_module, ember_test_helpers) {
 
   'use strict';
 
@@ -142,7 +144,7 @@ define('ember-qunit/module-for-model', ['exports', './qunit-module', 'ember-test
   exports['default'] = moduleForModel;
 
 });
-define('ember-qunit/module-for', ['exports', './qunit-module', 'ember-test-helpers'], function (exports, qunit_module, ember_test_helpers) {
+define('ember-qunit/module-for', ['exports', 'ember-qunit/qunit-module', 'ember-test-helpers'], function (exports, qunit_module, ember_test_helpers) {
 
   'use strict';
 
@@ -206,18 +208,18 @@ define('ember-test-helpers', ['exports', 'ember', 'ember-test-helpers/isolated-c
 
   'use strict';
 
-  Object.defineProperty(exports, 'isolatedContainer', { enumerable: true, get: function () { return isolatedContainer['default']; }});
-  Object.defineProperty(exports, 'TestModule', { enumerable: true, get: function () { return TestModule['default']; }});
-  Object.defineProperty(exports, 'TestModuleForComponent', { enumerable: true, get: function () { return TestModuleForComponent['default']; }});
-  Object.defineProperty(exports, 'TestModuleForModel', { enumerable: true, get: function () { return TestModuleForModel['default']; }});
-  Object.defineProperty(exports, 'getContext', { enumerable: true, get: function () { return test_context.getContext; }});
-  Object.defineProperty(exports, 'setContext', { enumerable: true, get: function () { return test_context.setContext; }});
-  Object.defineProperty(exports, 'setResolver', { enumerable: true, get: function () { return test_resolver.setResolver; }});
-
   Ember['default'].testing = true;
 
+  exports.isolatedContainer = isolatedContainer['default'];
+  exports.TestModule = TestModule['default'];
+  exports.TestModuleForComponent = TestModuleForComponent['default'];
+  exports.TestModuleForModel = TestModuleForModel['default'];
+  exports.getContext = test_context.getContext;
+  exports.setContext = test_context.setContext;
+  exports.setResolver = test_resolver.setResolver;
+
 });
-define('ember-test-helpers/isolated-container', ['exports', './test-resolver', 'ember'], function (exports, test_resolver, Ember) {
+define('ember-test-helpers/isolated-container', ['exports', 'ember-test-helpers/test-resolver', 'ember'], function (exports, test_resolver, Ember) {
 
   'use strict';
 
@@ -274,7 +276,7 @@ define('ember-test-helpers/test-context', ['exports'], function (exports) {
   }
 
 });
-define('ember-test-helpers/test-module-for-component', ['exports', './test-module', 'ember', './test-resolver'], function (exports, TestModule, Ember, test_resolver) {
+define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-helpers/test-module', 'ember', 'ember-test-helpers/test-resolver'], function (exports, TestModule, Ember, test_resolver) {
 
   'use strict';
 
@@ -342,7 +344,7 @@ define('ember-test-helpers/test-module-for-component', ['exports', './test-modul
   });
 
 });
-define('ember-test-helpers/test-module-for-model', ['exports', './test-module', 'ember'], function (exports, TestModule, Ember) {
+define('ember-test-helpers/test-module-for-model', ['exports', 'ember-test-helpers/test-module', 'ember'], function (exports, TestModule, Ember) {
 
   'use strict';
 
@@ -387,7 +389,7 @@ define('ember-test-helpers/test-module-for-model', ['exports', './test-module', 
   });
 
 });
-define('ember-test-helpers/test-module', ['exports', './isolated-container', './test-context', 'klassy'], function (exports, isolatedContainer, test_context, klassy) {
+define('ember-test-helpers/test-module', ['exports', 'ember-test-helpers/isolated-container', 'ember-test-helpers/test-context', 'klassy'], function (exports, isolatedContainer, test_context, klassy) {
 
   'use strict';
 
