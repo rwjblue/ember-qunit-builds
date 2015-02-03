@@ -48,6 +48,16 @@ define('ember-qunit/qunit-module', ['exports'], function (exports) {
   exports.createModule = createModule;
 
   function createModule(Constructor, name, description, callbacks) {
+    if (callbacks && callbacks.beforeEach) {
+      callbacks.setup = callbacks.beforeEach;
+      delete callbacks.beforeEach;
+    }
+
+    if (callbacks && callbacks.afterEach) {
+      callbacks.teardown = callbacks.afterEach;
+      delete callbacks.afterEach;
+    }
+
     var module = new Constructor(name, description, callbacks);
 
     QUnit.module(module.name, {
