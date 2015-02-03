@@ -47,23 +47,23 @@ define('ember-qunit/qunit-module', ['exports'], function (exports) {
 
   exports.createModule = createModule;
 
+  function normalizeCallbacks(callbacks) {
+    if (typeof callbacks !== 'object') { return; }
+    if (!callbacks) { return; }
+
+    if (callbacks.beforeEach) {
+      callbacks.setup = callbacks.beforeEach;
+      delete callbacks.beforeEach;
+    }
+
+    if (callbacks.afterEach) {
+      callbacks.teardown = callbacks.afterEach;
+      delete callbacks.afterEach;
+    }
+  }
+
   function createModule(Constructor, name, description, callbacks) {
-    // Allow `description` to be omitted, in which case it should
-    // default to `subjectName`
-    var actualCallbacks = callbacks;
-    if (!callbacks && typeof description === 'object') {
-      actualCallbacks = description;
-    }
-
-    if (actualCallbacks && actualCallbacks.beforeEach) {
-      actualCallbacks.setup = actualCallbacks.beforeEach;
-      delete actualCallbacks.beforeEach;
-    }
-
-    if (actualCallbacks && actualCallbacks.afterEach) {
-      actualCallbacks.teardown = actualCallbacks.afterEach;
-      delete actualCallbacks.afterEach;
-    }
+    normalizeCallbacks(callbacks || description);
 
     var module = new Constructor(name, description, callbacks);
 
