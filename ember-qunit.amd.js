@@ -80,11 +80,11 @@ define('ember-qunit/test', ['exports', 'ember', 'ember-test-helpers'], function 
   }
 
   function test(testName, callback) {
-    function wrapper() {
+    function wrapper(assert) {
       var context = ember_test_helpers.getContext();
 
       resetViews();
-      var result = callback.call(context);
+      var result = callback.call(context, assert);
 
       function failTestOnPromiseRejection(reason) {
         ok(false, reason);
