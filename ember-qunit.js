@@ -154,7 +154,7 @@ define('ember-qunit/module-for', ['exports', 'ember-qunit/qunit-module', 'ember-
   exports['default'] = moduleFor;
 
 });
-define('ember-qunit/qunit-module', ['exports'], function (exports) {
+define('ember-qunit/qunit-module', ['exports', 'qunit'], function (exports, qunit) {
 
   'use strict';
 
@@ -180,7 +180,7 @@ define('ember-qunit/qunit-module', ['exports'], function (exports) {
 
     var module = new Constructor(name, description, callbacks);
 
-    QUnit.module(module.name, {
+    qunit.module(module.name, {
       setup: function() {
         module.setup();
       },
@@ -191,7 +191,7 @@ define('ember-qunit/qunit-module', ['exports'], function (exports) {
   }
 
 });
-define('ember-qunit/test', ['exports', 'ember', 'ember-test-helpers'], function (exports, Ember, ember_test_helpers) {
+define('ember-qunit/test', ['exports', 'ember', 'ember-test-helpers', 'qunit'], function (exports, Ember, ember_test_helpers, qunit) {
 
   'use strict';
 
@@ -216,7 +216,7 @@ define('ember-qunit/test', ['exports', 'ember', 'ember-test-helpers'], function 
       });
     }
 
-    QUnit.test(testName, wrapper);
+    qunit.test(testName, wrapper);
   }
   exports['default'] = test;
 
@@ -754,6 +754,19 @@ define('klassy', ['exports'], function (exports) {
   exports.Klass = Klass;
   exports.defineClass = defineClass;
   exports.extendClass = extendClass;
+
+});
+define('qunit', ['exports'], function (exports) {
+
+	'use strict';
+
+	/* globals test:true */
+
+	var module = QUnit.module;
+	var test = QUnit.test;
+
+	exports.module = module;
+	exports.test = test;
 
 });
 var emberQunit = requireModule("ember-qunit");
