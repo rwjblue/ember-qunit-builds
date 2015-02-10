@@ -652,6 +652,8 @@ define('qunit', ['exports'], function (exports) {
 	var module = QUnit.module;
 	var test = QUnit.test;
 
+	exports['default'] = QUnit;
+
 	exports.module = module;
 	exports.test = test;
 
