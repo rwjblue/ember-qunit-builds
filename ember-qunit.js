@@ -801,11 +801,13 @@ define('qunit', ['exports'], function (exports) {
 
 	var module = QUnit.module;
 	var test = QUnit.test;
+	var skip = QUnit.skip;
 
 	exports['default'] = QUnit;
 
 	exports.module = module;
 	exports.test = test;
+	exports.skip = skip;
 
 });
 define("ember", ["exports"], function(__exports__) {
