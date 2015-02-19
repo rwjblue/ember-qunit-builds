@@ -256,7 +256,7 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
           return subject;
         });
 
-        _this.teardownSteps.push(function() {
+        _this.teardownSteps.unshift(function() {
           Ember['default'].run(function() {
             Ember['default'].tryInvoke(containerView, 'destroy');
           });
@@ -688,10 +688,12 @@ define('qunit', ['exports'], function (exports) {
 
 	var module = QUnit.module;
 	var test = QUnit.test;
+	var skip = QUnit.skip;
 
 	exports['default'] = QUnit;
 
 	exports.module = module;
 	exports.test = test;
+	exports.skip = skip;
 
 });//# sourceMappingURL=ember-qunit.amd.map
