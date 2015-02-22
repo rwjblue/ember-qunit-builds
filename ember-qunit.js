@@ -506,13 +506,14 @@ define('ember-test-helpers/test-module', ['exports', 'ember-test-helpers/isolate
         delete this.callbacks.teardown;
       }
 
+      this.teardownSteps.push(this.teardownSubject);
       this.teardownSteps.push(this.teardownContainer);
       this.teardownSteps.push(this.teardownContext);
       this.teardownSteps.push(this.teardownTestElements);
 
       if (this.callbacks.afterTeardown) {
         this.teardownSteps.push( this.callbacks.afterTeardown );
-        delete this.callbacks.beforeTeardown;
+        delete this.callbacks.afterTeardown;
       }
     },
 
@@ -563,6 +564,16 @@ define('ember-test-helpers/test-module', ['exports', 'ember-test-helpers/isolate
     setupTestElements: function() {
       if (Ember.$('#ember-testing').length === 0) {
         Ember.$('<div id="ember-testing"/>').appendTo(document.body);
+      }
+    },
+
+    teardownSubject: function() {
+      var subject = this.cache.subject;
+
+      if (subject) {
+        Ember.run(function() {
+          Ember.tryInvoke(subject, 'destroy');
+        });
       }
     },
 
