@@ -400,11 +400,10 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
 
       this.callbacks.render = function() {
         var containerView = Ember['default'].ContainerView.create({container: container});
-        var view = Ember['default'].run(function(){
+        Ember['default'].run(function(){
           var subject = context.subject();
           containerView.pushObject(subject);
           containerView.appendTo('#ember-testing');
-          return subject;
         });
 
         _this.teardownSteps.unshift(function() {
@@ -412,24 +411,18 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
             Ember['default'].tryInvoke(containerView, 'destroy');
           });
         });
-
-        return view.$();
       };
 
       this.callbacks.append = function() {
-        Ember['default'].deprecate('this.append() is deprecated. Please use this.render() instead.');
-        return this.callbacks.render();
+        Ember['default'].deprecate('this.append() is deprecated. Please use this.render() or this.$() instead.');
+        return context.$();
       };
 
       context.$ = function() {
-        var $view = this.render();
+        this.render();
         var subject = this.subject();
 
-        if (arguments.length){
-          return subject.$.apply(subject, arguments);
-        } else {
-          return $view;
-        }
+        return subject.$.apply(subject, arguments);
       };
     }
   });
@@ -556,11 +549,15 @@ define('ember-test-helpers/test-module-for-model', ['exports', 'ember-test-helpe
       }
 
       callbacks.store = function(){
+        var container = this.container;
+
         return container.lookup('store:main');
       };
 
       if (callbacks.subject === defaultSubject) {
         callbacks.subject = function(options) {
+          var container = this.container;
+
           return Ember['default'].run(function() {
             return container.lookup('store:main').createRecord(modelName, options);
           });
@@ -660,6 +657,7 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
       this.invokeSteps(this.contextualizedTeardownSteps, this.context);
       this.invokeSteps(this.teardownSteps);
       this.cache = null;
+      this.cachedCalls = null;
     },
 
     invokeSteps: function(steps, _context) {
@@ -747,6 +745,7 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
       var factory   = context.factory;
 
       this.cache = this.cache || {};
+      this.cachedCalls = this.cachedCalls || {};
 
       var keys = Ember['default'].keys(callbacks);
 
@@ -754,11 +753,12 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
         (function(key) {
 
           context[key] = function(options) {
-            if (_this.cache[key]) { return _this.cache[key]; }
+            if (_this.cachedCalls[key]) { return _this.cache[key]; }
 
             var result = callbacks[key].call(_this, options, factory());
 
             _this.cache[key] = result;
+            _this.cachedCalls[key] = true;
 
             return result;
           };
