@@ -128,7 +128,13 @@ define('ember-qunit/test', ['exports', 'ember', 'ember-test-helpers', 'qunit'], 
       var result = callback.call(context, assert);
 
       function failTestOnPromiseRejection(reason) {
-        ok(false, reason);
+        var message;
+        if (reason instanceof Error) {
+          message = reason.stack;
+        } else {
+          message = Ember['default'].inspect(reason);
+        }
+        ok(false, message);
       }
 
       Ember['default'].run(function(){
