@@ -93,19 +93,20 @@ define('ember-qunit/qunit-module', ['exports', 'qunit'], function (exports, quni
 
     qunit.module(module.name, {
       setup: function(assert) {
-        module.setup();
-
-        if (beforeEach) {
-          beforeEach.call(module.context, assert);
-        }
+        var done = assert.async();
+        module.setup().then(function() {
+          if (beforeEach) {
+            beforeEach.call(module.context, assert);
+          }
+        })['finally'](done);
       },
 
       teardown: function(assert) {
         if (afterEach) {
           afterEach.call(module.context, assert);
         }
-
-        module.teardown();
+        var done = assert.async();
+        module.teardown()['finally'](done);
       }
     });
   }
@@ -225,6 +226,18 @@ define('ember-test-helpers/isolated-container', ['exports', 'ember-test-helpers/
     container.register('view:toplevel', Ember['default'].View.extend());
     container.register('view:select', Ember['default'].Select);
     container.register('route:basic', Ember['default'].Route, { instantiate: false });
+
+    var globalContext = typeof global === 'object' && global || self;
+    if (globalContext.DS) {
+      var DS = globalContext.DS;
+      container.register('transform:boolean', DS.BooleanTransform);
+      container.register('transform:date', DS.DateTransform);
+      container.register('transform:number', DS.NumberTransform);
+      container.register('transform:string', DS.StringTransform);
+      container.register('serializer:-default', DS.JSONSerializer);
+      container.register('serializer:-rest', DS.RESTSerializer);
+      container.register('adapter:-rest', DS.RESTAdapter);
+    }
 
     for (var i = fullNames.length; i > 0; i--) {
       var fullName = fullNames[i - 1];
@@ -535,16 +548,21 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
     },
 
     setup: function() {
-      this.invokeSteps(this.setupSteps);
-      this.contextualizeCallbacks();
-      this.invokeSteps(this.contextualizedSetupSteps, this.context);
+      var self = this;
+      return self.invokeSteps(self.setupSteps).then(function() {
+        self.contextualizeCallbacks();
+        return self.invokeSteps(self.contextualizedSetupSteps, self.context);
+      });
     },
 
     teardown: function() {
-      this.invokeSteps(this.contextualizedTeardownSteps, this.context);
-      this.invokeSteps(this.teardownSteps);
-      this.cache = null;
-      this.cachedCalls = null;
+      var self = this;
+      return self.invokeSteps(self.contextualizedTeardownSteps, self.context).then(function() {
+        return self.invokeSteps(self.teardownSteps);
+      }).then(function() {
+        self.cache = null;
+        self.cachedCalls = null;
+      });
     },
 
     invokeSteps: function(steps, _context) {
@@ -552,10 +570,16 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
       if (!context) {
         context = this;
       }
-
-      for (var i = 0, l = steps.length; i < l; i++) {
-        steps[i].call(context);
+      steps = steps.slice();
+      function nextStep() {
+        var step = steps.shift();
+        if (step) {
+          return Ember['default'].RSVP.resolve(step.call(context)).then(nextStep);
+        } else {
+          return Ember['default'].RSVP.resolve();
+        }
       }
+      return nextStep();
     },
 
     setupContainer: function() {
