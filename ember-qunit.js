@@ -412,8 +412,10 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
     init: function(componentName, description, callbacks) {
       // Allow `description` to be omitted
       if (!callbacks && typeof description === 'object') {
-        callbacks = description || {};
+        callbacks = description;
         description = null;
+      } else if (!callbacks && !description) {
+        callbacks = {};
       }
 
       this.componentName = componentName;
