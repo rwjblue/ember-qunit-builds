@@ -116,15 +116,10 @@ define('ember-qunit/test', ['exports', 'ember', 'ember-test-helpers', 'qunit'], 
 
   'use strict';
 
-  function resetViews() {
-    Ember['default'].View.views = {};
-  }
-
   function test(testName, callback) {
     function wrapper(assert) {
       var context = ember_test_helpers.getContext();
 
-      resetViews();
       var result = callback.call(context, assert);
 
       function failTestOnPromiseRejection(reason) {
@@ -304,8 +299,10 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
     init: function(componentName, description, callbacks) {
       // Allow `description` to be omitted
       if (!callbacks && typeof description === 'object') {
-        callbacks = description || {};
+        callbacks = description;
         description = null;
+      } else if (!callbacks && !description) {
+        callbacks = {};
       }
 
       this.componentName = componentName;
