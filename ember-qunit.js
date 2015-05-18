@@ -414,7 +414,7 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
       if (!callbacks && typeof description === 'object') {
         callbacks = description;
         description = null;
-      } else if (!callbacks && !description) {
+      } else if (!callbacks) {
         callbacks = {};
       }
 
