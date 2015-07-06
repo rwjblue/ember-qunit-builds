@@ -196,7 +196,9 @@ define('ember-test-helpers/build-registry', ['exports'], function (exports) {
     function register(name, factory) {
       var thingToRegisterWith = registry || container;
 
-      thingToRegisterWith.register(name, factory);
+      if (!container.lookupFactory(name)) {
+        thingToRegisterWith.register(name, factory);
+      }
     }
 
     if (Ember.Application.buildRegistry) {
@@ -355,7 +357,7 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
     },
 
     setupComponentIntegrationTest: function() {
-      var self = this;
+      var module = this;
       var context = this.context;
       context.dispatcher = Ember['default'].EventDispatcher.create();
       context.dispatcher.setup({}, '#ember-testing');
@@ -371,19 +373,20 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
         if (typeof template === 'string') {
           template = Ember['default'].Handlebars.compile(template);
         }
-        self.component = Ember['default'].View.create({
-          context: context,
-          controller: self,
-          template: template,
-          container: self.container
+        module.component = Ember['default'].Component.create({
+          layout: template,
+          container: module.container
         });
+        module.component.set('context' ,context);
+        module.component.set('controller', module);
+
         Ember['default'].run(function() {
-          self.component.appendTo('#ember-testing');
+          module.component.appendTo('#ember-testing');
         });
       };
 
       context.$ = function() {
-        return self.component.$.apply(self.component, arguments);
+        return module.component.$.apply(module.component, arguments);
       };
 
       context.set = function(key, value) {
@@ -397,7 +400,7 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
       };
 
       context.on = function(actionName, handler) {
-        self.actionHooks[actionName] = handler;
+        module.actionHooks[actionName] = handler;
       };
 
     },
@@ -457,8 +460,8 @@ define('ember-test-helpers/test-module-for-model', ['exports', 'ember-test-helpe
 
       callbacks.store = function(){
         var container = this.container;
-
-        return container.lookup('store:main');
+        var store = container.lookup('service:store') || container.lookup('store:main');
+        return store;
       };
 
       if (callbacks.subject === defaultSubject) {
@@ -466,7 +469,8 @@ define('ember-test-helpers/test-module-for-model', ['exports', 'ember-test-helpe
           var container = this.container;
 
           return Ember['default'].run(function() {
-            return container.lookup('store:main').createRecord(modelName, options);
+            var store = container.lookup('service:store') || container.lookup('store:main');
+            return store.createRecord(modelName, options);
           });
         };
       }
@@ -510,7 +514,7 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
     initNeeds: function() {
       this.needs = [this.subjectName];
       if (this.callbacks.needs) {
-        this.needs = this.needs.concat(this.callbacks.needs)
+        this.needs = this.needs.concat(this.callbacks.needs);
         delete this.callbacks.needs;
       }
     },
@@ -581,7 +585,10 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
       function nextStep() {
         var step = steps.shift();
         if (step) {
-          return Ember['default'].RSVP.resolve(step.call(context)).then(nextStep);
+          // guard against exceptions, for example missing components referenced from needs.
+          return new Ember['default'].RSVP.Promise(function(ok) {
+            ok(step.call(context));
+          }).then(nextStep);
         } else {
           return Ember['default'].RSVP.resolve();
         }
@@ -666,7 +673,7 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
       this.cache = this.cache || {};
       this.cachedCalls = this.cachedCalls || {};
 
-      var keys = Ember['default'].keys(callbacks);
+      var keys = (Object.keys || Ember['default'].keys)(callbacks);
 
       for (var i = 0, l = keys.length; i < l; i++) {
         (function(key) {
