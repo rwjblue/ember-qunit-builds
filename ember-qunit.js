@@ -328,8 +328,18 @@ define('ember-test-helpers/build-registry', ['exports'], function (exports) {
 
     // Ember 1.10.0 did not properly add `view:toplevel` or `view:default`
     // to the registry in Ember.Application.buildRegistry :(
-    register('view:toplevel', Ember.View.extend());
-    register('view:default', Ember._MetamorphView);
+    //
+    // Ember 2.0.0 removed Ember.View as public API, so only do this when
+    // Ember.View is present
+    if (Ember.View) {
+      register('view:toplevel', Ember.View.extend());
+    }
+
+    // Ember 2.0.0 removed Ember._MetamorphView from the Ember global, so only
+    // do this when present
+    if (Ember._MetamorphView) {
+      register('view:default', Ember._MetamorphView);
+    }
 
     var globalContext = typeof global === 'object' && global || self;
     if (globalContext.DS) {
@@ -442,16 +452,16 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
       context.dispatcher.setup({}, '#ember-testing');
 
       this.callbacks.render = function() {
-        var containerView = Ember['default'].ContainerView.create({container: container});
+        var subject;
+
         Ember['default'].run(function(){
-          var subject = context.subject();
-          containerView.pushObject(subject);
-          containerView.appendTo('#ember-testing');
+          subject = context.subject();
+          subject.appendTo('#ember-testing');
         });
 
         _this.teardownSteps.unshift(function() {
           Ember['default'].run(function() {
-            Ember['default'].tryInvoke(containerView, 'destroy');
+            Ember['default'].tryInvoke(subject, 'destroy');
           });
         });
       };
@@ -508,8 +518,19 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
         });
       };
 
+      context.setProperties = function(hash) {
+        Ember['default'].run(function() {
+          Ember['default'].setProperties(context, hash);
+        });
+      };
+
       context.get = function(key) {
         return Ember['default'].get(context, key);
+      };
+
+      context.getProperties = function() {
+        var args = Array.prototype.slice.call(arguments);
+        return Ember['default'].getProperties(context, args);
       };
 
       context.on = function(actionName, handler) {
@@ -568,7 +589,8 @@ define('ember-test-helpers/test-module-for-model', ['exports', 'ember-test-helpe
 
       var adapterFactory = container.lookupFactory('adapter:application');
       if (!adapterFactory) {
-        container.register('adapter:application', DS.FixtureAdapter);
+        adapterFactory = DS.JSONAPIAdapter || DS.FixtureAdapter;
+        container.register('adapter:application', adapterFactory);
       }
 
       callbacks.store = function(){
@@ -769,7 +791,12 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
 
     teardownTestElements: function() {
       Ember['default'].$('#ember-testing').empty();
-      Ember['default'].View.views = {};
+
+      // Ember 2.0.0 removed Ember.View as public API, so only do this when
+      // Ember.View is present
+      if (Ember['default'].View) {
+        Ember['default'].View.views = {};
+      }
     },
 
     defaultSubject: function(options, factory) {
