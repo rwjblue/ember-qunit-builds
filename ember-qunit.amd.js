@@ -325,16 +325,16 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
     setupComponentUnitTest: function() {
       var _this = this;
       var resolver = test_resolver.getResolver();
-      var container = this.container;
       var context = this.context;
 
       var layoutName = 'template:components/' + this.componentName;
 
       var layout = resolver.resolve(layoutName);
 
+      var thingToRegisterWith = this.registry || this.container;
       if (layout) {
-        container.register(layoutName, layout);
-        container.injection(this.subjectName, 'layout', layoutName);
+        thingToRegisterWith.register(layoutName, layout);
+        thingToRegisterWith.injection(this.subjectName, 'layout', layoutName);
       }
 
       context.dispatcher = Ember['default'].EventDispatcher.create();
@@ -479,7 +479,9 @@ define('ember-test-helpers/test-module-for-model', ['exports', 'ember-test-helpe
       var adapterFactory = container.lookupFactory('adapter:application');
       if (!adapterFactory) {
         adapterFactory = DS.JSONAPIAdapter || DS.FixtureAdapter;
-        container.register('adapter:application', adapterFactory);
+
+        var thingToRegisterWith = this.registry || this.container;
+        thingToRegisterWith.register('adapter:application', adapterFactory);
       }
 
       callbacks.store = function(){
