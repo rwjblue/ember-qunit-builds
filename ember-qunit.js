@@ -290,9 +290,11 @@ define('ember-test-helpers/build-registry', ['exports'], function (exports) {
     ];
 
     function exposeRegistryMethod(container, method) {
-      container[method] = function() {
-        return container._registry[method].apply(container._registry, arguments);
-      };
+      if (method in container) {
+        container[method] = function() {
+          return container._registry[method].apply(container._registry, arguments);
+        };
+      }
     }
 
     for (var i = 0, l = methods.length; i < l; i++) {
