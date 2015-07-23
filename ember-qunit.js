@@ -377,6 +377,7 @@ define('ember-test-helpers/test-context', ['exports'], function (exports) {
 
   exports.setContext = setContext;
   exports.getContext = getContext;
+  exports.unsetContext = unsetContext;
 
   var __test_context__;
 
@@ -386,6 +387,10 @@ define('ember-test-helpers/test-context', ['exports'], function (exports) {
 
   function getContext() {
     return __test_context__;
+  }
+
+  function unsetContext() {
+    __test_context__ = undefined;
   }
 
 });
@@ -786,6 +791,9 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
 
     teardownContext: function() {
       var context = this.context;
+      this.context = undefined;
+      test_context.unsetContext();
+
       if (context.dispatcher) {
         Ember['default'].run(function() {
           context.dispatcher.destroy();
