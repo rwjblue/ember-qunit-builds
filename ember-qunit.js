@@ -489,9 +489,12 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
     setupComponentIntegrationTest: function() {
       var module = this;
       var context = this.context;
+
+      this.actionHooks = {};
+
       context.dispatcher = Ember['default'].EventDispatcher.create();
       context.dispatcher.setup({}, '#ember-testing');
-      this.actionHooks = {};
+      context.actions = module.actionHooks;
 
       context.render = function(template) {
         if (!template) {
@@ -507,6 +510,7 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
           layout: template,
           container: module.container
         });
+
         module.component.set('context' ,context);
         module.component.set('controller', module);
 
@@ -553,7 +557,6 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
       }
     },
 
-
     send: function(actionName) {
       var hook = this.actionHooks[actionName];
       if (!hook) {
@@ -570,8 +573,6 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
         });
       }
     }
-
-
   });
 
 });
