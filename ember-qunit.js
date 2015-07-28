@@ -455,7 +455,7 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
         thingToRegisterWith.injection(this.subjectName, 'layout', layoutName);
       }
 
-      context.dispatcher = Ember['default'].EventDispatcher.create();
+      context.dispatcher = this.container.lookup('event_dispatcher:main') || Ember['default'].EventDispatcher.create();
       context.dispatcher.setup({}, '#ember-testing');
 
       this.callbacks.render = function() {
@@ -492,9 +492,16 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
 
       this.actionHooks = {};
 
-      context.dispatcher = Ember['default'].EventDispatcher.create();
+      context.dispatcher = this.container.lookup('event_dispatcher:main') || Ember['default'].EventDispatcher.create();
       context.dispatcher.setup({}, '#ember-testing');
       context.actions = module.actionHooks;
+
+      // This thing is registered as "view:" instead of "component:"
+      // because only views get the necessary _viewRegistry
+      // injection. Which is arguably an Ember bug, but doesn't impact
+      // normal app usage since apps always use a "view:" at the top
+      // level.
+      (this.registry || this.container).register('view:test-holder', Ember['default'].Component.extend());
 
       context.render = function(template) {
         if (!template) {
@@ -506,9 +513,8 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
         if (typeof template === 'string') {
           template = Ember['default'].Handlebars.compile(template);
         }
-        module.component = Ember['default'].Component.create({
-          layout: template,
-          container: module.container
+        module.component = module.container.lookupFactory('view:test-holder').create({
+          layout: template
         });
 
         module.component.set('context' ,context);
@@ -795,7 +801,7 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
       this.context = undefined;
       test_context.unsetContext();
 
-      if (context.dispatcher) {
+      if (context.dispatcher && !context.dispatcher.isDestroyed) {
         Ember['default'].run(function() {
           context.dispatcher.destroy();
         });
@@ -852,6 +858,7 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
 
       this.container = items.container;
       this.registry = items.registry;
+
 
       var thingToRegisterWith = this.registry || this.container;
       var router = resolver.resolve('router:main');
