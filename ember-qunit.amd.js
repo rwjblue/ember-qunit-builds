@@ -325,6 +325,24 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
         this.setupSteps.push(this.setupComponentIntegrationTest);
         this.teardownSteps.push(this.teardownComponent);
       }
+
+      if (Ember['default'].View && Ember['default'].View.views) {
+        this.setupSteps.push(this._aliasViewRegistry);
+        this.teardownSteps.push(this._resetViewRegistry);
+      }
+    },
+
+    _aliasViewRegistry: function() {
+      this._originalGlobalViewRegistry = Ember['default'].View.views;
+      var viewRegistry = this.container.lookup('-view-registry:main');
+
+      if (viewRegistry) {
+        Ember['default'].View.views = viewRegistry;
+      }
+    },
+
+    _resetViewRegistry: function() {
+      Ember['default'].View.views = this._originalGlobalViewRegistry;
     },
 
     setupComponentUnitTest: function() {
@@ -383,12 +401,7 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
       context.dispatcher.setup({}, '#ember-testing');
       context.actions = module.actionHooks;
 
-      // This thing is registered as "view:" instead of "component:"
-      // because only views get the necessary _viewRegistry
-      // injection. Which is arguably an Ember bug, but doesn't impact
-      // normal app usage since apps always use a "view:" at the top
-      // level.
-      (this.registry || this.container).register('view:test-holder', Ember['default'].Component.extend());
+      (this.registry || this.container).register('component:-test-holder', Ember['default'].Component.extend());
 
       context.render = function(template) {
         if (!template) {
@@ -400,7 +413,7 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
         if (typeof template === 'string') {
           template = Ember['default'].Handlebars.compile(template);
         }
-        module.component = module.container.lookupFactory('view:test-holder').create({
+        module.component = module.container.lookupFactory('component:-test-holder').create({
           layout: template
         });
 
@@ -445,6 +458,13 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
 
     setupContext: function() {
       this._super.call(this);
+
+      // only setup the injection if we are running against a version
+      // of Ember that has `-view-registry:main` (Ember >= 1.12)
+      if (this.container.lookupFactory('-view-registry:main')) {
+        (this.registry || this.container).injection('component', '_viewRegistry', '-view-registry:main');
+      }
+
       if (!this.isUnitTest) {
         this.context.factory = function() {};
       }
@@ -700,7 +720,7 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
 
       // Ember 2.0.0 removed Ember.View as public API, so only do this when
       // Ember.View is present
-      if (Ember['default'].View) {
+      if (Ember['default'].View && Ember['default'].View.views) {
         Ember['default'].View.views = {};
       }
     },
