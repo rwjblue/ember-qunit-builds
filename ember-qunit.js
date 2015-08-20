@@ -303,7 +303,7 @@ define('ember-test-helpers/build-registry', ['exports'], function (exports) {
   }
 
   exports['default'] = function(resolver) {
-    var registry, container;
+    var fallbackRegistry, registry, container;
     var namespace = Ember.Object.create({
       Resolver: { create: function() { return resolver; } }
     });
@@ -317,10 +317,12 @@ define('ember-test-helpers/build-registry', ['exports'], function (exports) {
     }
 
     if (Ember.Application.buildRegistry) {
-      registry = Ember.Application.buildRegistry(namespace);
-      registry.register('component-lookup:main', Ember.ComponentLookup);
+      fallbackRegistry = Ember.Application.buildRegistry(namespace);
+      fallbackRegistry.register('component-lookup:main', Ember.ComponentLookup);
 
-      registry = registry;
+      registry = new Ember.Registry({
+        fallback: fallbackRegistry
+      });
       container = registry.container();
       exposeRegistryMethodsWithoutDeprecations(container);
     } else {
@@ -667,6 +669,10 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
       this.name = description || subjectName;
       this.callbacks = callbacks || {};
 
+      if (this.callbacks.integration && this.callbacks.needs) {
+        throw new Error("cannot declare 'inegration: true' and 'needs' in the same module");
+      }
+
       if (this.callbacks.integration) {
         this.isIntegration = callbacks.integration;
         delete callbacks.integration;
@@ -879,7 +885,6 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
       this.container = items.container;
       this.registry = items.registry;
 
-
       var thingToRegisterWith = this.registry || this.container;
       var router = resolver.resolve('router:main');
       router = router || Ember['default'].Router.extend();
@@ -898,7 +903,11 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
         thingToRegisterWith.register(fullName, resolver.resolve(normalizedFullName));
       }
 
-      thingToRegisterWith.resolver = function() { };
+      if (this.registry) {
+        this.registry.fallback.resolver = function() {};
+      } else {
+        this.container.resolver = function() {};
+      }
     },
 
     _setupIntegratedContainer: function() {
