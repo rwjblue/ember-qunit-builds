@@ -255,6 +255,19 @@ define('ember-test-helpers/build-registry', ['exports'], function (exports) {
   }
 
 });
+define('ember-test-helpers/has-ember-version', ['exports', 'ember'], function (exports, Ember) {
+
+  'use strict';
+
+  function hasEmberVersion(major, minor) {
+    var numbers = Ember['default'].VERSION.split('-')[0].split('.');
+    var actualMajor = parseInt(numbers[0], 10);
+    var actualMinor = parseInt(numbers[1], 10);
+    return actualMajor > major || (actualMajor === major && actualMinor >= minor);
+  }
+  exports['default'] = hasEmberVersion;
+
+});
 define('ember-test-helpers/isolated-container', function () {
 
 	'use strict';
@@ -420,7 +433,7 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
         });
 
         module.component.set('context' ,context);
-        module.component.set('controller', module);
+        module.component.set('controller', context);
 
         Ember['default'].run(function() {
           module.component.appendTo('#ember-testing');
@@ -455,7 +468,13 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
       context.on = function(actionName, handler) {
         module.actionHooks[actionName] = handler;
       };
-
+      context.send = function(actionName) {
+        var hook = module.actionHooks[actionName];
+        if (!hook) {
+          throw new Error("integration testing template received unexpected action " + actionName);
+        }
+        hook.apply(module, Array.prototype.slice.call(arguments, 1));
+      };
     },
 
     setupContext: function() {
@@ -470,14 +489,6 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
       if (!this.isUnitTest) {
         this.context.factory = function() {};
       }
-    },
-
-    send: function(actionName) {
-      var hook = this.actionHooks[actionName];
-      if (!hook) {
-        throw new Error("integration testing template received unexpected action " + actionName);
-      }
-      hook.apply(this, Array.prototype.slice.call(arguments, 1));
     },
 
     teardownComponent: function() {
@@ -538,7 +549,7 @@ define('ember-test-helpers/test-module-for-model', ['exports', 'ember-test-helpe
   });
 
 });
-define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helpers/test-context', 'klassy', 'ember-test-helpers/test-resolver', 'ember-test-helpers/build-registry'], function (exports, Ember, test_context, klassy, test_resolver, buildRegistry) {
+define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helpers/test-context', 'klassy', 'ember-test-helpers/test-resolver', 'ember-test-helpers/build-registry', 'ember-test-helpers/has-ember-version'], function (exports, Ember, test_context, klassy, test_resolver, buildRegistry, hasEmberVersion) {
 
   'use strict';
 
@@ -557,7 +568,7 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
       this.callbacks = callbacks || {};
 
       if (this.callbacks.integration && this.callbacks.needs) {
-        throw new Error("cannot declare 'inegration: true' and 'needs' in the same module");
+        throw new Error("cannot declare 'integration: true' and 'needs' in the same module");
       }
 
       if (this.callbacks.integration) {
@@ -772,10 +783,12 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
       this.container = items.container;
       this.registry = items.registry;
 
-      var thingToRegisterWith = this.registry || this.container;
-      var router = resolver.resolve('router:main');
-      router = router || Ember['default'].Router.extend();
-      thingToRegisterWith.register('router:main', router);
+      if (hasEmberVersion['default'](1, 13)) {
+        var thingToRegisterWith = this.registry || this.container;
+        var router = resolver.resolve('router:main');
+        router = router || Ember['default'].Router.extend();
+        thingToRegisterWith.register('router:main', router);
+      }
     },
 
     _setupIsolatedContainer: function() {
