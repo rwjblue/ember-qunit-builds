@@ -52,7 +52,7 @@ define('ember-qunit/qunit-module', ['exports', 'qunit'], function (exports, quni
     if (!callbacks) { return; }
 
     var beforeEach;
-    
+
     if (callbacks.setup) {
       beforeEach = callbacks.setup;
       delete callbacks.setup;
@@ -94,7 +94,7 @@ define('ember-qunit/qunit-module', ['exports', 'qunit'], function (exports, quni
     qunit.module(module.name, {
       setup: function(assert) {
         var done = assert.async();
-        module.setup().then(function() {
+        return module.setup().then(function() {
           if (beforeEach) {
             beforeEach.call(module.context, assert);
           }
@@ -106,7 +106,7 @@ define('ember-qunit/qunit-module', ['exports', 'qunit'], function (exports, quni
           afterEach.call(module.context, assert);
         }
         var done = assert.async();
-        module.teardown()['finally'](done);
+        return module.teardown()['finally'](done);
       }
     });
   }
