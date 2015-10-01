@@ -52,7 +52,7 @@ define('ember-qunit/qunit-module', ['exports', 'qunit'], function (exports, quni
     if (!callbacks) { return; }
 
     var beforeEach;
-    
+
     if (callbacks.setup) {
       beforeEach = callbacks.setup;
       delete callbacks.setup;
@@ -94,7 +94,7 @@ define('ember-qunit/qunit-module', ['exports', 'qunit'], function (exports, quni
     qunit.module(module.name, {
       setup: function(assert) {
         var done = assert.async();
-        module.setup().then(function() {
+        return module.setup().then(function() {
           if (beforeEach) {
             beforeEach.call(module.context, assert);
           }
@@ -106,7 +106,7 @@ define('ember-qunit/qunit-module', ['exports', 'qunit'], function (exports, quni
           afterEach.call(module.context, assert);
         }
         var done = assert.async();
-        module.teardown()['finally'](done);
+        return module.teardown()['finally'](done);
       }
     });
   }
@@ -126,6 +126,11 @@ define('ember-qunit/test', ['exports', 'ember', 'ember-test-helpers', 'qunit'], 
         var message;
         if (reason instanceof Error) {
           message = reason.stack;
+          if (reason.message && message.indexOf(reason.message) < 0) {
+            // PhantomJS has a `stack` that does not contain the actual
+            // exception message.
+            message = Ember['default'].inspect(reason) + "\n" + message;
+          }
         } else {
           message = Ember['default'].inspect(reason);
         }
@@ -317,7 +322,14 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
       } else if (callbacks.integration) {
         this.isUnitTest = false;
       } else {
-        Ember['default'].deprecate("the component:" + componentName + " test module is implicitly running in unit test mode, which will change to integration test mode by default in an upcoming version of ember-test-helpers. Add `unit: true` or a `needs:[]` list to explicitly opt in to unit test mode.");
+        Ember['default'].deprecate(
+          "the component:" + componentName + " test module is implicitly running in unit test mode, " +
+          "which will change to integration test mode by default in an upcoming version of " +
+          "ember-test-helpers. Add `unit: true` or a `needs:[]` list to explicitly opt in to unit " +
+          "test mode.",
+          false,
+          { id: 'ember-test-helpers.test-module-for-component.test-type', until: '0.6.0' }
+        );
         this.isUnitTest = true;
       }
 
@@ -394,7 +406,11 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
       };
 
       this.callbacks.append = function() {
-        Ember['default'].deprecate('this.append() is deprecated. Please use this.render() or this.$() instead.');
+        Ember['default'].deprecate(
+          'this.append() is deprecated. Please use this.render() or this.$() instead.',
+          false,
+          { id: 'ember-test-helpers.test-module-for-component.append', until: '0.6.0' }
+        );
         return context.$();
       };
 
@@ -691,10 +707,22 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
         container:  this.container,
         registry: this.registry,
         factory:    factory,
-        dispatcher: null
+        dispatcher: null,
+        register: function() {
+          var target = this.registry || this.container;
+          return target.register.apply(target, arguments);
+        },
+        inject: {}
       });
 
-      this.context = test_context.getContext();
+      var context = this.context = test_context.getContext();
+
+      Object.keys(Ember['default'].inject).forEach(function(typeName) {
+        context.inject[typeName] = function(name, opts) {
+          var alias = (opts && opts.as) || name;
+          Ember['default'].set(context, alias, context.container.lookup(typeName + ':' + name));
+        };
+      });
     },
 
     setupTestElements: function() {
