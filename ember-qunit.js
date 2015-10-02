@@ -830,12 +830,15 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
 
       var context = this.context = test_context.getContext();
 
-      Object.keys(Ember['default'].inject).forEach(function(typeName) {
-        context.inject[typeName] = function(name, opts) {
-          var alias = (opts && opts.as) || name;
-          Ember['default'].set(context, alias, context.container.lookup(typeName + ':' + name));
-        };
-      });
+      if (Ember['default'].inject) {
+        var keys = (Object.keys || Ember['default'].keys)(Ember['default'].inject);
+        keys.forEach(function(typeName) {
+          context.inject[typeName] = function(name, opts) {
+            var alias = (opts && opts.as) || name;
+            Ember['default'].set(context, alias, context.container.lookup(typeName + ':' + name));
+          };
+        });
+      }
     },
 
     setupTestElements: function() {
