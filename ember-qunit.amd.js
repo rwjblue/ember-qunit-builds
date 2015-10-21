@@ -215,6 +215,15 @@ define('ember-test-helpers/build-registry', ['exports'], function (exports) {
       registry = new Ember.Registry({
         fallback: fallbackRegistry
       });
+
+      // these properties are set on the fallback registry by `buildRegistry`
+      // and on the primary registry within the ApplicationInstance constructor
+      // but we need to manually recreate them since ApplicationInstance's are not
+      // exposed externally
+      registry.normalizeFullName = fallbackRegistry.normalizeFullName;
+      registry.makeToString = fallbackRegistry.makeToString;
+      registry.describe = fallbackRegistry.describe;
+
       container = registry.container();
       exposeRegistryMethodsWithoutDeprecations(container);
     } else {
