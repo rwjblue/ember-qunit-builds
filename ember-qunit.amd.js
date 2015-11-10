@@ -1,4 +1,4 @@
-define('ember-qunit', ['exports', 'ember-qunit/module-for', 'ember-qunit/module-for-component', 'ember-qunit/module-for-model', 'ember-qunit/test', 'ember-test-helpers'], function (exports, moduleFor, moduleForComponent, moduleForModel, test, ember_test_helpers) {
+define('ember-qunit', ['exports', 'ember-qunit/module-for', 'ember-qunit/module-for-component', 'ember-qunit/module-for-model', 'ember-qunit/test', 'ember-qunit/only', 'ember-test-helpers'], function (exports, moduleFor, moduleForComponent, moduleForModel, test, only, ember_test_helpers) {
 
   'use strict';
 
@@ -8,6 +8,7 @@ define('ember-qunit', ['exports', 'ember-qunit/module-for', 'ember-qunit/module-
   exports.moduleForComponent = moduleForComponent['default'];
   exports.moduleForModel = moduleForModel['default'];
   exports.test = test['default'];
+  exports.only = only['default'];
   exports.setResolver = ember_test_helpers.setResolver;
 
 });
@@ -39,6 +40,16 @@ define('ember-qunit/module-for', ['exports', 'ember-qunit/qunit-module', 'ember-
     qunit_module.createModule(ember_test_helpers.TestModule, name, description, callbacks);
   }
   exports['default'] = moduleFor;
+
+});
+define('ember-qunit/only', ['exports', 'ember-qunit/test-wrapper', 'qunit'], function (exports, testWrapper, qunit) {
+
+  'use strict';
+
+  function only(testName, callback) {
+    testWrapper['default'](testName, callback, qunit.only);
+  }
+  exports['default'] = only;
 
 });
 define('ember-qunit/qunit-module', ['exports', 'qunit'], function (exports, qunit) {
@@ -112,15 +123,15 @@ define('ember-qunit/qunit-module', ['exports', 'qunit'], function (exports, quni
   }
 
 });
-define('ember-qunit/test', ['exports', 'ember', 'ember-test-helpers', 'qunit'], function (exports, Ember, ember_test_helpers, qunit) {
+define('ember-qunit/test-wrapper', ['exports', 'ember', 'ember-test-helpers'], function (exports, Ember, ember_test_helpers) {
 
   'use strict';
 
-  function test(testName, callback) {
-    function wrapper(assert) {
+  function testWrapper(testName, callback, qunit) {
+    function wrapper() {
       var context = ember_test_helpers.getContext();
 
-      var result = callback.call(context, assert);
+      var result = callback.apply(context, arguments);
 
       function failTestOnPromiseRejection(reason) {
         var message;
@@ -143,7 +154,17 @@ define('ember-qunit/test', ['exports', 'ember', 'ember-test-helpers', 'qunit'], 
       });
     }
 
-    qunit.test(testName, wrapper);
+    qunit(testName, wrapper);
+  }
+  exports['default'] = testWrapper;
+
+});
+define('ember-qunit/test', ['exports', 'ember-qunit/test-wrapper', 'qunit'], function (exports, testWrapper, qunit) {
+
+  'use strict';
+
+  function test(testName, callback) {
+    testWrapper['default'](testName, callback, qunit.test);
   }
   exports['default'] = test;
 
@@ -162,7 +183,7 @@ define('ember-test-helpers', ['exports', 'ember', 'ember-test-helpers/test-modul
   exports.setResolver = test_resolver.setResolver;
 
 });
-define('ember-test-helpers/build-registry', ['exports'], function (exports) {
+define('ember-test-helpers/build-registry', ['exports', 'ember'], function (exports, Ember) {
 
   'use strict';
 
@@ -194,9 +215,17 @@ define('ember-test-helpers/build-registry', ['exports'], function (exports) {
     }
   }
 
+  var Owner = (function() {
+    if (Ember['default']._RegistryProxyMixin && Ember['default']._ContainerProxyMixin) {
+      return Ember['default'].Object.extend(Ember['default']._RegistryProxyMixin, Ember['default']._ContainerProxyMixin);
+    }
+
+    return Ember['default'].Object.extend();
+  })();
+
   exports['default'] = function(resolver) {
     var fallbackRegistry, registry, container;
-    var namespace = Ember.Object.create({
+    var namespace = Ember['default'].Object.create({
       Resolver: { create: function() { return resolver; } }
     });
 
@@ -208,11 +237,11 @@ define('ember-test-helpers/build-registry', ['exports'], function (exports) {
       }
     }
 
-    if (Ember.Application.buildRegistry) {
-      fallbackRegistry = Ember.Application.buildRegistry(namespace);
-      fallbackRegistry.register('component-lookup:main', Ember.ComponentLookup);
+    if (Ember['default'].Application.buildRegistry) {
+      fallbackRegistry = Ember['default'].Application.buildRegistry(namespace);
+      fallbackRegistry.register('component-lookup:main', Ember['default'].ComponentLookup);
 
-      registry = new Ember.Registry({
+      registry = new Ember['default'].Registry({
         fallback: fallbackRegistry
       });
 
@@ -224,11 +253,18 @@ define('ember-test-helpers/build-registry', ['exports'], function (exports) {
       registry.makeToString = fallbackRegistry.makeToString;
       registry.describe = fallbackRegistry.describe;
 
-      container = registry.container();
+      var owner = Owner.create({
+        __registry__: registry,
+        __container__: null
+      });
+
+      container = registry.container({ owner: owner });
+      owner.__container__ = container;
+
       exposeRegistryMethodsWithoutDeprecations(container);
     } else {
-      container = Ember.Application.buildContainer(namespace);
-      container.register('component-lookup:main', Ember.ComponentLookup);
+      container = Ember['default'].Application.buildContainer(namespace);
+      container.register('component-lookup:main', Ember['default'].ComponentLookup);
     }
 
     // Ember 1.10.0 did not properly add `view:toplevel` or `view:default`
@@ -236,14 +272,14 @@ define('ember-test-helpers/build-registry', ['exports'], function (exports) {
     //
     // Ember 2.0.0 removed Ember.View as public API, so only do this when
     // Ember.View is present
-    if (Ember.View) {
-      register('view:toplevel', Ember.View.extend());
+    if (Ember['default'].View) {
+      register('view:toplevel', Ember['default'].View.extend());
     }
 
     // Ember 2.0.0 removed Ember._MetamorphView from the Ember global, so only
     // do this when present
-    if (Ember._MetamorphView) {
-      register('view:default', Ember._MetamorphView);
+    if (Ember['default']._MetamorphView) {
+      register('view:default', Ember['default']._MetamorphView);
     }
 
     var globalContext = typeof global === 'object' && global || self;
@@ -723,6 +759,10 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
 
       var context = this.context = test_context.getContext();
 
+      if (Ember['default'].setOwner) {
+        Ember['default'].setOwner(context, this.container.owner);
+      }
+
       if (Ember['default'].inject) {
         var keys = (Object.keys || Ember['default'].keys)(Ember['default'].inject);
         keys.forEach(function(typeName) {
@@ -1101,11 +1141,13 @@ define('qunit', ['exports'], function (exports) {
 	var module = QUnit.module;
 	var test = QUnit.test;
 	var skip = QUnit.skip;
+	var only = QUnit.only;
 
 	exports['default'] = QUnit;
 
 	exports.module = module;
 	exports.test = test;
 	exports.skip = skip;
+	exports.only = only;
 
 });//# sourceMappingURL=ember-qunit.amd.map
