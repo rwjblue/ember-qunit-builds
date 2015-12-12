@@ -206,6 +206,8 @@ define('ember-test-helpers/build-registry', ['exports', 'ember'], function (expo
 
   'use strict';
 
+  /* globals global, self */
+
   function exposeRegistryMethodsWithoutDeprecations(container) {
     var methods = [
       'register',
@@ -360,7 +362,7 @@ define('ember-test-helpers/test-context', ['exports'], function (exports) {
   }
 
 });
-define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-helpers/test-module', 'ember', 'ember-test-helpers/test-resolver'], function (exports, TestModule, Ember, test_resolver) {
+define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-helpers/test-module', 'ember', 'ember-test-helpers/test-resolver', 'ember-test-helpers/has-ember-version'], function (exports, TestModule, Ember, test_resolver, hasEmberVersion) {
 
   'use strict';
 
@@ -408,7 +410,7 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
         this.setupSteps.push(this.setupComponentUnitTest);
       } else {
         this.callbacks.subject = function() {
-          throw new Error("component integration tests do not support `subject()`.");
+          throw new Error("component integration tests do not support `subject()`. Instead, render the component as if it were HTML: `this.render('<my-component foo=true>');`. For more information, read: http://guides.emberjs.com/v2.2.0/testing/testing-components/");
         };
         this.setupSteps.push(this.setupComponentIntegrationTest);
         this.teardownSteps.unshift(this.teardownComponent);
@@ -522,15 +524,23 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
       };
 
       context.set = function(key, value) {
-        Ember['default'].run(function() {
-          Ember['default'].set(context, key, value);
+        var ret = Ember['default'].run(function() {
+          return Ember['default'].set(context, key, value);
         });
+
+        if (hasEmberVersion['default'](2,0)) {
+          return ret;
+        }
       };
 
       context.setProperties = function(hash) {
-        Ember['default'].run(function() {
-          Ember['default'].setProperties(context, hash);
+        var ret = Ember['default'].run(function() {
+          return Ember['default'].setProperties(context, hash);
         });
+
+        if (hasEmberVersion['default'](2,0)) {
+          return ret;
+        }
       };
 
       context.get = function(key) {
@@ -545,6 +555,7 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
       context.on = function(actionName, handler) {
         module.actionHooks[actionName] = handler;
       };
+
       context.send = function(actionName) {
         var hook = module.actionHooks[actionName];
         if (!hook) {
@@ -582,6 +593,8 @@ define('ember-test-helpers/test-module-for-component', ['exports', 'ember-test-h
 define('ember-test-helpers/test-module-for-model', ['exports', 'ember-test-helpers/test-module', 'ember'], function (exports, TestModule, Ember) {
 
   'use strict';
+
+  /* global DS */ // added here to prevent an import from erroring when ED is not present
 
   exports['default'] = TestModule['default'].extend({
     init: function(modelName, description, callbacks) {
@@ -863,10 +876,8 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
 
     // allow arbitrary named factories, like rspec let
     contextualizeCallbacks: function() {
-      var _this     = this;
       var callbacks = this.callbacks;
       var context   = this.context;
-      var factory   = context.factory;
 
       this.cache = this.cache || {};
       this.cachedCalls = this.cachedCalls || {};
@@ -874,21 +885,25 @@ define('ember-test-helpers/test-module', ['exports', 'ember', 'ember-test-helper
       var keys = (Object.keys || Ember['default'].keys)(callbacks);
 
       for (var i = 0, l = keys.length; i < l; i++) {
-        (function(key) {
-
-          context[key] = function(options) {
-            if (_this.cachedCalls[key]) { return _this.cache[key]; }
-
-            var result = callbacks[key].call(_this, options, factory());
-
-            _this.cache[key] = result;
-            _this.cachedCalls[key] = true;
-
-            return result;
-          };
-
-        })(keys[i]);
+        this._contextualizeCallback(context, keys[i]);
       }
+    },
+
+    _contextualizeCallback: function(context, key) {
+      var _this     = this;
+      var callbacks = this.callbacks;
+      var factory   = context.factory;
+
+      context[key] = function(options) {
+        if (_this.cachedCalls[key]) { return _this.cache[key]; }
+
+        var result = callbacks[key].call(_this, options, factory());
+
+        _this.cache[key] = result;
+        _this.cachedCalls[key] = true;
+
+        return result;
+      };
     },
 
     _setupContainer: function(isolated) {
@@ -949,7 +964,10 @@ define('ember-test-helpers/test-resolver', ['exports'], function (exports) {
   }
 
   function getResolver() {
-    if (__resolver__ == null) throw new Error('you must set a resolver with `testResolver.set(resolver)`');
+    if (__resolver__ == null) {
+      throw new Error('you must set a resolver with `testResolver.set(resolver)`');
+    }
+
     return __resolver__;
   }
 
@@ -960,6 +978,8 @@ define('ember-test-helpers/wait', ['exports', 'ember'], function (exports, Ember
 
   exports._teardownAJAXHooks = _teardownAJAXHooks;
   exports._setupAJAXHooks = _setupAJAXHooks;
+
+  /* globals jQuery, self */
 
   var requests;
   function incrementAjaxPendingRequests(_, xhr) {
