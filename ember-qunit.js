@@ -111,16 +111,38 @@ var define, requireModule, require, requirejs;
   };
 })();
 
-define('ember-qunit', ['exports', 'ember-qunit/module-for', 'ember-qunit/module-for-component', 'ember-qunit/module-for-model', 'ember-qunit/test', 'ember-qunit/only', 'ember-qunit/skip', 'ember-test-helpers'], function (exports, _emberQunitModuleFor, _emberQunitModuleForComponent, _emberQunitModuleForModel, _emberQunitTest, _emberQunitOnly, _emberQunitSkip, _emberTestHelpers) {
+define('ember-qunit', ['exports', 'ember-qunit/module-for', 'ember-qunit/module-for-component', 'ember-qunit/module-for-model', 'ember-qunit/adapter', 'ember-test-helpers', 'qunit'], function (exports, _emberQunitModuleFor, _emberQunitModuleForComponent, _emberQunitModuleForModel, _emberQunitAdapter, _emberTestHelpers, _qunit) {
   'use strict';
 
+  exports.test = _qunit.test;
+  exports.skip = _qunit.skip;
+  exports.only = _qunit.only;
   exports.moduleFor = _emberQunitModuleFor['default'];
   exports.moduleForComponent = _emberQunitModuleForComponent['default'];
   exports.moduleForModel = _emberQunitModuleForModel['default'];
-  exports.test = _emberQunitTest['default'];
-  exports.only = _emberQunitOnly['default'];
-  exports.skip = _emberQunitSkip['default'];
   exports.setResolver = _emberTestHelpers.setResolver;
+  exports.QUnitAdapter = _emberQunitAdapter['default'];
+});
+define('ember-qunit/adapter', ['exports', 'ember', 'qunit'], function (exports, _ember, _qunit) {
+  'use strict';
+
+  exports['default'] = _ember['default'].Test.Adapter.extend({
+    init: function init() {
+      this.doneCallbacks = [];
+    },
+
+    asyncStart: function asyncStart() {
+      this.doneCallbacks.push(_qunit['default'].config.current.assert.async());
+    },
+
+    asyncEnd: function asyncEnd() {
+      this.doneCallbacks.pop()();
+    },
+
+    exception: function exception(error) {
+      _qunit['default'].config.current.assert.ok(false, _ember['default'].inspect(error));
+    }
+  });
 });
 define('ember-qunit/module-for-component', ['exports', './qunit-module', 'ember-test-helpers'], function (exports, _qunitModule, _emberTestHelpers) {
   'use strict';
@@ -149,20 +171,6 @@ define('ember-qunit/module-for', ['exports', './qunit-module', 'ember-test-helpe
     _qunitModule.createModule(_emberTestHelpers.TestModule, name, description, callbacks);
   }
 });
-define('ember-qunit/only', ['exports', 'ember-qunit/test-wrapper', 'qunit'], function (exports, _emberQunitTestWrapper, _qunit) {
-  'use strict';
-
-  exports['default'] = only;
-
-  function only() {
-    for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
-      args[_key] = arguments[_key];
-    }
-
-    args.unshift(_qunit.only);
-    _emberQunitTestWrapper['default'].apply(null, args);
-  }
-});
 define('ember-qunit/qunit-module', ['exports', 'ember', 'qunit'], function (exports, _ember, _qunit) {
   'use strict';
 
@@ -177,11 +185,6 @@ define('ember-qunit/qunit-module', ['exports', 'ember', 'qunit'], function (expo
     }
 
     var beforeEach;
-
-    if (callbacks.setup) {
-      beforeEach = callbacks.setup;
-      delete callbacks.setup;
-    }
 
     if (callbacks.beforeEach) {
       beforeEach = callbacks.beforeEach;
@@ -201,11 +204,6 @@ define('ember-qunit/qunit-module', ['exports', 'ember', 'qunit'], function (expo
 
     var afterEach;
 
-    if (callbacks.teardown) {
-      afterEach = callbacks.teardown;
-      delete callbacks.teardown;
-    }
-
     if (callbacks.afterEach) {
       afterEach = callbacks.afterEach;
       delete callbacks.afterEach;
@@ -215,112 +213,40 @@ define('ember-qunit/qunit-module', ['exports', 'ember', 'qunit'], function (expo
   }
 
   function createModule(Constructor, name, description, callbacks) {
-    var beforeEach = beforeEachCallback(callbacks || description);
-    var afterEach = afterEachCallback(callbacks || description);
+    var _beforeEach = beforeEachCallback(callbacks || description);
+    var _afterEach = afterEachCallback(callbacks || description);
 
     var module = new Constructor(name, description, callbacks);
 
     _qunit.module(module.name, {
-      setup: function setup(assert) {
-        var done = assert.async();
+      beforeEach: function beforeEach() {
+        var _this = this,
+            _arguments = arguments;
 
         // provide the test context to the underlying module
         module.setContext(this);
 
-        return module.setup().then(function () {
-          if (beforeEach) {
-            return beforeEach.call(module.context, assert);
+        return module.setup.apply(module, arguments).then(function () {
+          if (_beforeEach) {
+            return _beforeEach.apply(_this, _arguments);
           }
-        })['finally'](done);
+        });
       },
 
-      teardown: function teardown(assert) {
+      afterEach: function afterEach() {
+        var _arguments2 = arguments;
+
         var result = undefined;
 
-        if (afterEach) {
-          result = afterEach.call(module.context, assert);
+        if (_afterEach) {
+          result = _afterEach.apply(this, arguments);
         }
 
-        var done = assert.async();
         return _ember['default'].RSVP.resolve(result).then(function () {
-          return module.teardown()['finally'](done);
+          return module.teardown.apply(module, _arguments2);
         });
       }
     });
-  }
-});
-define('ember-qunit/skip', ['exports', 'ember-qunit/test-wrapper', 'qunit'], function (exports, _emberQunitTestWrapper, _qunit) {
-  'use strict';
-
-  exports['default'] = skip;
-
-  function skip() {
-    for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
-      args[_key] = arguments[_key];
-    }
-
-    args.unshift(_qunit.skip);
-    _emberQunitTestWrapper['default'].apply(null, args);
-  }
-});
-define('ember-qunit/test-wrapper', ['exports', 'ember', 'ember-test-helpers'], function (exports, _ember, _emberTestHelpers) {
-  'use strict';
-
-  exports['default'] = testWrapper;
-
-  function testWrapper(qunit /*, testName, expected, callback, async */) {
-    var callback;
-    for (var _len = arguments.length, args = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; ++_key) {
-      args[_key - 1] = arguments[_key];
-    }
-
-    function wrapper() {
-      var context = _emberTestHelpers.getContext();
-
-      var result = callback.apply(context, arguments);
-
-      function failTestOnPromiseRejection(reason) {
-        var message;
-        if (reason instanceof Error) {
-          message = reason.stack;
-          if (reason.message && message && message.indexOf(reason.message) < 0) {
-            // PhantomJS has a `stack` that does not contain the actual
-            // exception message.
-            message = _ember['default'].inspect(reason) + "\n" + message;
-          }
-        } else {
-          message = _ember['default'].inspect(reason);
-        }
-        ok(false, message);
-      }
-
-      _ember['default'].run(function () {
-        QUnit.stop();
-        _ember['default'].RSVP.Promise.resolve(result)['catch'](failTestOnPromiseRejection)['finally'](QUnit.start);
-      });
-    }
-
-    if (args.length === 2) {
-      callback = args.splice(1, 1, wrapper)[0];
-    } else {
-      callback = args.splice(2, 1, wrapper)[0];
-    }
-
-    qunit.apply(null, args);
-  }
-});
-define('ember-qunit/test', ['exports', 'ember-qunit/test-wrapper', 'qunit'], function (exports, _emberQunitTestWrapper, _qunit) {
-  'use strict';
-
-  exports['default'] = test;
-
-  function test() {
-    for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
-      args[_key] = arguments[_key];
-    }
-
-    args.unshift(_qunit.test);
-    _emberQunitTestWrapper['default'].apply(null, args);
   }
 });
 define('ember-test-helpers', ['exports', 'ember', 'ember-test-helpers/test-module', 'ember-test-helpers/test-module-for-acceptance', 'ember-test-helpers/test-module-for-integration', 'ember-test-helpers/test-module-for-component', 'ember-test-helpers/test-module-for-model', 'ember-test-helpers/test-context', 'ember-test-helpers/test-resolver'], function (exports, _ember, _emberTestHelpersTestModule, _emberTestHelpersTestModuleForAcceptance, _emberTestHelpersTestModuleForIntegration, _emberTestHelpersTestModuleForComponent, _emberTestHelpersTestModuleForModel, _emberTestHelpersTestContext, _emberTestHelpersTestResolver) {
@@ -1856,7 +1782,7 @@ define('klassy', ['exports'], function (exports) {
   exports.extendClass = extendClass;
 });
 define("qunit", ["exports"], function (exports) {
-  /* globals test:true */
+  /* globals QUnit */
 
   "use strict";
 
