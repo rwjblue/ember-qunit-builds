@@ -50,7 +50,7 @@ define('ember-qunit/only', ['exports', 'ember-qunit/test-wrapper', 'qunit'], fun
     _emberQunitTestWrapper['default'].apply(null, args);
   }
 });
-define('ember-qunit/qunit-module', ['exports', 'qunit'], function (exports, _qunit) {
+define('ember-qunit/qunit-module', ['exports', 'ember', 'qunit'], function (exports, _ember, _qunit) {
   'use strict';
 
   exports.createModule = createModule;
@@ -116,17 +116,22 @@ define('ember-qunit/qunit-module', ['exports', 'qunit'], function (exports, _qun
 
         return module.setup().then(function () {
           if (beforeEach) {
-            beforeEach.call(module.context, assert);
+            return beforeEach.call(module.context, assert);
           }
         })['finally'](done);
       },
 
       teardown: function teardown(assert) {
+        var result = undefined;
+
         if (afterEach) {
-          afterEach.call(module.context, assert);
+          result = afterEach.call(module.context, assert);
         }
+
         var done = assert.async();
-        return module.teardown()['finally'](done);
+        return _ember['default'].RSVP.resolve(result).then(function () {
+          return module.teardown()['finally'](done);
+        });
       }
     });
   }
