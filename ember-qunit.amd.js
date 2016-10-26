@@ -1,6 +1,7 @@
 define('ember-qunit', ['exports', 'ember-qunit/module-for', 'ember-qunit/module-for-component', 'ember-qunit/module-for-model', 'ember-qunit/adapter', 'ember-test-helpers', 'qunit'], function (exports, _emberQunitModuleFor, _emberQunitModuleForComponent, _emberQunitModuleForModel, _emberQunitAdapter, _emberTestHelpers, _qunit) {
   'use strict';
 
+  exports.module = _qunit.module;
   exports.test = _qunit.test;
   exports.skip = _qunit.skip;
   exports.only = _qunit.only;
