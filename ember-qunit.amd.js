@@ -249,10 +249,14 @@ define('ember-test-helpers/-legacy-overrides', ['exports', 'ember', './has-ember
 define('ember-test-helpers/abstract-test-module', ['exports', 'klassy', './wait', './test-context', 'ember'], function (exports, _klassy, _wait, _testContext, _ember) {
   'use strict';
 
-  var assign = _ember['default'].assign || _ember['default'].merge;
+  // calling this `merge` here because we cannot
+  // actually assume it is like `Object.assign`
+  // with > 2 args
+  var merge = _ember['default'].assign || _ember['default'].merge;
 
   exports['default'] = _klassy.Klass.extend({
     init: function init(name, options) {
+      this.context = undefined;
       this.name = name;
       this.callbacks = options || {};
 
@@ -338,21 +342,41 @@ define('ember-test-helpers/abstract-test-module', ['exports', 'klassy', './wait'
     },
 
     setupTestElements: function setupTestElements() {
-      if (!document.querySelector('#ember-testing')) {
+      var testEl = document.querySelector('#ember-testing');
+      if (!testEl) {
         var element = document.createElement('div');
         element.setAttribute('id', 'ember-testing');
 
         document.body.appendChild(element);
+        this.fixtureResetValue = '';
+      } else {
+        this.fixtureResetValue = testEl.innerHTML;
       }
     },
 
     setupContext: function setupContext(options) {
-      var config = assign({
+      var context = this.getContext();
+
+      merge(context, {
         dispatcher: null,
         inject: {}
-      }, options);
+      });
+      merge(context, options);
 
-      _testContext.setContext(config);
+      _testContext.setContext(context);
+      this.context = context;
+    },
+
+    setContext: function setContext(context) {
+      this.context = context;
+    },
+
+    getContext: function getContext() {
+      if (this.context) {
+        return this.context;
+      }
+
+      return this.context = _testContext.getContext() || {};
     },
 
     setupAJAXListeners: function setupAJAXListeners() {
@@ -364,7 +388,7 @@ define('ember-test-helpers/abstract-test-module', ['exports', 'klassy', './wait'
     },
 
     teardownTestElements: function teardownTestElements() {
-      document.getElementById('ember-testing').innerHTML = '';
+      document.getElementById('ember-testing').innerHTML = this.fixtureResetValue;
 
       // Ember 2.0.0 removed Ember.View as public API, so only do this when
       // Ember.View is present
@@ -575,7 +599,7 @@ define('ember-test-helpers/test-module-for-acceptance', ['exports', './abstract-
     }
   });
 });
-define('ember-test-helpers/test-module-for-component', ['exports', './test-module', 'ember', './test-resolver', './has-ember-version', './-legacy-overrides'], function (exports, _testModule, _ember, _testResolver, _hasEmberVersion, _legacyOverrides) {
+define('ember-test-helpers/test-module-for-component', ['exports', './test-module', 'ember', './has-ember-version', './-legacy-overrides'], function (exports, _testModule, _ember, _hasEmberVersion, _legacyOverrides) {
   'use strict';
 
   exports.setupComponentIntegrationTest = setupComponentIntegrationTest;
@@ -652,7 +676,7 @@ define('ember-test-helpers/test-module-for-component', ['exports', './test-modul
 
     setupComponentUnitTest: function setupComponentUnitTest() {
       var _this = this;
-      var resolver = _testResolver.getResolver();
+      var resolver = this.resolver;
       var context = this.context;
 
       var layoutName = 'template:components/' + this.componentName;
@@ -879,7 +903,7 @@ define('ember-test-helpers/test-module-for-component', ['exports', './test-modul
     };
   }
 });
-define('ember-test-helpers/test-module-for-integration', ['exports', 'ember', './test-context', './abstract-test-module', './test-resolver', './build-registry', './has-ember-version', './-legacy-overrides', './test-module-for-component'], function (exports, _ember, _testContext, _abstractTestModule, _testResolver, _buildRegistry, _hasEmberVersion, _legacyOverrides, _testModuleForComponent) {
+define('ember-test-helpers/test-module-for-integration', ['exports', 'ember', './abstract-test-module', './test-resolver', './build-registry', './has-ember-version', './-legacy-overrides', './test-module-for-component'], function (exports, _ember, _abstractTestModule, _testResolver, _buildRegistry, _hasEmberVersion, _legacyOverrides, _testModuleForComponent) {
   'use strict';
 
   var ACTION_KEY = undefined;
@@ -890,6 +914,11 @@ define('ember-test-helpers/test-module-for-integration', ['exports', 'ember', '.
   }
 
   exports['default'] = _abstractTestModule['default'].extend({
+    init: function init() {
+      this._super.apply(this, arguments);
+      this.resolver = this.callbacks.resolver || _testResolver.getResolver();
+    },
+
     initSetupSteps: function initSetupSteps() {
       this.setupSteps = [];
       this.contextualizedSetupSteps = [];
@@ -942,7 +971,7 @@ define('ember-test-helpers/test-module-for-integration', ['exports', 'ember', '.
     },
 
     setupContainer: function setupContainer() {
-      var resolver = _testResolver.getResolver();
+      var resolver = this.resolver;
       var items = _buildRegistry['default'](resolver);
 
       this.container = items.container;
@@ -974,7 +1003,7 @@ define('ember-test-helpers/test-module-for-integration', ['exports', 'ember', '.
         }
       });
 
-      var context = this.context = _testContext.getContext();
+      var context = this.context;
 
       if (_ember['default'].setOwner) {
         _ember['default'].setOwner(context, this.container.owner);
@@ -1131,7 +1160,7 @@ define('ember-test-helpers/test-module-for-model', ['exports', './test-module', 
     }
   });
 });
-define('ember-test-helpers/test-module', ['exports', 'ember', './test-context', './abstract-test-module', './test-resolver', './build-registry', './has-ember-version'], function (exports, _ember, _testContext, _abstractTestModule, _testResolver, _buildRegistry, _hasEmberVersion) {
+define('ember-test-helpers/test-module', ['exports', 'ember', './abstract-test-module', './test-resolver', './build-registry', './has-ember-version'], function (exports, _ember, _abstractTestModule, _testResolver, _buildRegistry, _hasEmberVersion) {
   'use strict';
 
   exports['default'] = _abstractTestModule['default'].extend({
@@ -1147,6 +1176,7 @@ define('ember-test-helpers/test-module', ['exports', 'ember', './test-context', 
       this.description = description || subjectName;
       this.name = description || subjectName;
       this.callbacks = callbacks || {};
+      this.resolver = this.callbacks.resolver || _testResolver.getResolver();
 
       if (this.callbacks.integration && this.callbacks.needs) {
         throw new Error("cannot declare 'integration: true' and 'needs' in the same module");
@@ -1251,10 +1281,8 @@ define('ember-test-helpers/test-module', ['exports', 'ember', './test-context', 
         }
       });
 
-      var context = this.context = _testContext.getContext();
-
       if (_ember['default'].setOwner) {
-        _ember['default'].setOwner(context, this.container.owner);
+        _ember['default'].setOwner(this.context, this.container.owner);
       }
 
       this.setupInject();
@@ -1368,7 +1396,7 @@ define('ember-test-helpers/test-module', ['exports', 'ember', './test-context', 
     },
 
     _setupContainer: function _setupContainer(isolated) {
-      var resolver = _testResolver.getResolver();
+      var resolver = this.resolver;
 
       var items = _buildRegistry['default'](!isolated ? resolver : Object.create(resolver, {
         resolve: {
@@ -1388,7 +1416,7 @@ define('ember-test-helpers/test-module', ['exports', 'ember', './test-context', 
     },
 
     _setupIsolatedContainer: function _setupIsolatedContainer() {
-      var resolver = _testResolver.getResolver();
+      var resolver = this.resolver;
       this._setupContainer(true);
 
       var thingToRegisterWith = this.registry || this.container;
